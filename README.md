@@ -1,14 +1,14 @@
 # Gear-Of-Wars-Game
 
-# Project Title
-## 2D PLATFORMER GAME
+# Project Title:  2D PLATFORMER GAME
+
 # Group Members
 ## Abdul Rahman Azam 23K-0061
 ## Raghib Rizwan Rabani 23K-0012
 ## Talha Rusman 23K-0065
 
 # Introduction
-This is a thrilling 2D action game that puts players in the midst of
+This is a thrilling 2D action game that puts players in the mindset of
 intense combat scenarios. This game is going to have different
 characters and even different weapons and whenever the game is
 leveling up the difficulty level is also increasing. There are
@@ -18,7 +18,7 @@ different enemies which are spawned according to the difficulty.
 Many action games lack depth and challenge, often relying on
 repetitive gameplay and predictable enemy behavior. It is very
 difficult to make different maps of the game. As each map is
-according to the difficulty level. This game askes a user to enter
+according to the difficulty level. This game asks a user to enter
 username and stores their high scores which is very difficult to
 make as it requires filing for this purpose.
 
