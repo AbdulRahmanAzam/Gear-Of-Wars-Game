@@ -21,6 +21,43 @@ using namespace sf;
 
 enum button_states{BTN_IDLE = 0, BTN_HOVER, BTN_ACTIVE};
 
+class Tile{
+    private:
+
+    public:
+    Tile(){}
+    virtual ~Tile(){}
+
+};
+
+class TileMap{
+    private:
+    unsigned gridSizeU;
+    Vector2u maxSize;
+    unsigned layers;
+    vector<vector<vector<Tile > > > map;
+
+    public:
+    TileMap() {
+        this->gridSizeU = 50;
+        this->maxSize.x = 5000;
+        this->maxSize.y = 5000;
+        this->layers = 5;
+
+        for(int i=0;i < maxSize.x; i++){
+            this->map.push_back(vector<vector<Tile>>());
+            for(int j=0;j < maxSize.y ; j++){
+                this->map[j].push_back(vector<Tile>());
+                for(int k = 0;k < layers; k++){
+                    this->map[i][j].push_back(Tile());
+                }
+            }
+        }
+    }
+    virtual ~TileMap(){}
+
+};
+
 class Entity{  // ===================================================  ENTITY  ============================================================
 
     protected:
@@ -344,11 +381,7 @@ class MainMenuState : public State { //===============================  MAINMENU
     void setButtons(){
         this->buttons["GAME_STATE"] = new Button(100, 200, 150, 50, this->font, "NEW GAME", Color(200, 200, 200), Color(150, 150, 150), Color(0, 0, 255));
         this->buttons["SETTINGS"] = new Button(100, 350, 150, 50, this->font, "SETTINGS", Color(200, 200, 200), Color(150, 150, 150), Color(0, 0, 255));
-        this->buttons["EXIT"] = new Button(100, 500, 150, 50, this->font, "QUIT", Color(200, 200, 200), Color(150, 150, 150), Color(0, 0, 255));
-    }
-    void setMusic(){
-        music.openFromFile("Music\\PUBG Theme Song (2Scratch Trap Remix).ogg");
-        music.play();
+        this->buttons["EXIT"] = new Button(100, 500, 150, 50, this->font, "EXIT", Color(200, 200, 200), Color(150, 150, 150), Color(0, 0, 255));
     }
     public:
     //constructor / destructor
@@ -367,6 +400,10 @@ class MainMenuState : public State { //===============================  MAINMENU
         }
     }
 
+    void setMusic(){
+        music.openFromFile("Music\\PUBG Theme Song (2Scratch Trap Remix).ogg");
+        music.play();
+    }
     // functions
     void updateButtons(const float& dt){   
         for(auto &button : buttons){
