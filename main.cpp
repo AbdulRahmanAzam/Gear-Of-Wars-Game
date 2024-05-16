@@ -1,3 +1,5 @@
+// line 1559 error of intersection of bullet and enemy
+// A* path finding algorithm will be applied on the enemy to find the player
 #include <SFML/Graphics.hpp>
 #include <SFML/Window.hpp>
 #include <SFML/System.hpp>
@@ -21,8 +23,272 @@ using namespace sf;
 
 enum button_states {BTN_IDLE = 0, BTN_HOVER, BTN_ACTIVE};
 enum TileType {NORMAL = 0, DAMAGING};
+enum PLAYER_STATE
+{
+    IDLE = 0,
+    LEFT,
+    RIGHT,
+    JUMPING
+};
 #define GRID_SIZE 50
 #define CHECK_GRID_SIZE 70
+#define ENEMY_SPEED 70.0f
+#define BULLET_SPEED 15.f
+
+#define WINDOWS_WIDTH 1366
+#define WINDOWS_HEIGHT 768
+
+class Bullet2 {
+public:
+    Sprite shape;
+
+    Bullet2(Texture* texture, float posx, float posy) {
+        this->shape.setTexture(*texture);
+        this->shape.setScale(0.07f, 0.07f);
+        this->shape.setRotation(45);
+        this->shape.setPosition(posx, posy + 37.f);
+    }
+};
+
+class Player2 {
+public:
+    Sprite shape;
+    Texture* texture;
+    int HP;
+    int HPMAX;
+
+    std::vector<Bullet2> bullets;
+
+    Player2(Texture* texture) {
+        this->HPMAX = 10;
+        this->HP = this->HPMAX;
+
+        this->texture = texture;
+        this->shape.setTexture(*texture);
+
+        this->shape.setScale(0.07f, 0.07f);
+        this->shape.setRotation(90);
+        this->shape.setPosition(400, 300);
+    }
+};
+
+class Enemy2 {
+public:
+    Sprite shape;
+    int HP;
+    int HPMAX;
+
+    Enemy2(Texture* texture, Vector2u windowSize) {
+        this->HPMAX = rand() % 3 + 1;
+        this->HP = this->HPMAX;
+        this->shape.setTexture(*texture);
+
+        this->shape.setScale(0.2f, 0.2f);
+        this->shape.setPosition(windowSize.x - this->shape.getGlobalBounds().width, rand() % int(windowSize.y - this->shape.getGlobalBounds().height));
+    }
+};
+
+class Game2 {
+private:
+    RenderWindow window;
+    Font font;
+    Texture playerTex, enemyTex, bulletTex;
+    Text scoreT, end, hp1, ehp1;
+    Player2 player;
+    std::vector<Enemy2> enemies;
+    int score;
+    float shootTimer, enemyTimer;
+    Clock clock;
+    float dt, dtMultiplier;
+
+    void initWindow() {
+        window.create(VideoMode(1366, 768), "Shooter 360!", Style::Default);
+        window.setFramerateLimit(60);
+    }
+
+    void initFonts() {
+        if (!font.loadFromFile("Textures\\Balleny.ttf"))
+            throw "Font could not open";
+    }
+
+    void initTextures() {
+        if (!playerTex.loadFromFile("Textures\\ship.png"))
+            throw "Player texture could not open";
+        if (!enemyTex.loadFromFile("Textures\\enemy.png"))
+            throw "Enemy texture could not open";
+        if (!bulletTex.loadFromFile("Textures\\missile.png"))
+            throw "Bullet texture could not open";
+    }
+
+    void initTexts() {
+        scoreT.setFont(font);
+        scoreT.setCharacterSize(40);
+        scoreT.setFillColor(Color::White);
+        scoreT.setPosition(window.getSize().x - 110.f, 10.f);
+
+        end.setFont(font);
+        end.setCharacterSize(100);
+        end.setFillColor(Color::Red);
+        end.setPosition(window.getSize().x / 2 - 200, window.getSize().y / 2 - 100);
+        end.setString("GAME OVER!");
+
+        hp1.setFont(font);
+        hp1.setCharacterSize(20);
+        hp1.setFillColor(Color::White);
+
+        ehp1.setFont(font);
+        ehp1.setCharacterSize(20);
+        ehp1.setFillColor(Color::White);
+    }
+
+    void updatePlayer() {
+        if (Keyboard::isKeyPressed(Keyboard::W))
+            player.shape.move(0.f, -10.f * dt);
+        if (Keyboard::isKeyPressed(Keyboard::S))
+            player.shape.move(0.f, 10.f * dt);
+        if (Keyboard::isKeyPressed(Keyboard::D))
+            player.shape.move(10.f * dt, 0.f);
+        if (Keyboard::isKeyPressed(Keyboard::A))
+            player.shape.move(-10.f * dt, 0.f);
+
+        if (player.shape.getPosition().x <= player.shape.getGlobalBounds().width) // LEFT
+            player.shape.setPosition(player.shape.getGlobalBounds().width, player.shape.getPosition().y);
+
+        if (player.shape.getPosition().x >= window.getSize().x) // RIGHT
+            player.shape.setPosition(window.getSize().x, player.shape.getPosition().y);
+
+        if (player.shape.getPosition().y <= 0) // TOP
+            player.shape.setPosition(player.shape.getPosition().x, 0);
+
+        if (player.shape.getPosition().y >= window.getSize().y - player.shape.getGlobalBounds().height) // BOTTOM
+            player.shape.setPosition(player.shape.getPosition().x, window.getSize().y - player.shape.getGlobalBounds().height);
+
+        hp1.setPosition(player.shape.getPosition().x - hp1.getGlobalBounds().width, player.shape.getPosition().y);
+        hp1.setString(std::to_string(player.HP) + "/" + std::to_string(player.HPMAX));
+    }
+
+    void updateBullets() {
+        if (shootTimer < 7)
+            shootTimer += 1.f * dt;
+        else if (Mouse::isButtonPressed(Mouse::Left) && shootTimer >= 7) {
+            shootTimer = 0;
+            player.bullets.push_back(Bullet2(&bulletTex, player.shape.getPosition().x, player.shape.getPosition().y));
+        }
+        for (int i = 0; i < player.bullets.size(); i++) {
+            player.bullets[i].shape.move(10.f * dt, 0.f);
+
+            if (player.bullets[i].shape.getPosition().x > window.getSize().x)
+                player.bullets.erase(player.bullets.begin() + i);
+
+            for (int k = 0; k < enemies.size(); k++) {
+                if (player.bullets[i].shape.getGlobalBounds().intersects(enemies[k].shape.getGlobalBounds())) {
+                    if (enemies[k].HP <= 1) {
+                        score += enemies[k].HPMAX;
+                        enemies.erase(enemies.begin() + k);
+                    } else
+                        enemies[k].HP--;
+
+                    player.bullets.erase(player.bullets.begin() + i);
+                    break;
+                }
+            }
+        }
+    }
+
+    void updateEnemies() {
+        if (enemyTimer >= 20) {
+            enemyTimer = 0;
+            enemies.push_back(Enemy2(&enemyTex, window.getSize()));
+        } else {
+            enemyTimer += 1.f * dt;
+        }
+
+        for (int i = 0; i < enemies.size(); i++) {
+            enemies[i].shape.move(-7.f * dt, 0.f);
+
+            if (enemies[i].shape.getPosition().x <= 0) {
+                enemies.erase(enemies.begin() + i);
+                break;
+            }
+
+            if (enemies[i].shape.getGlobalBounds().intersects(player.shape.getGlobalBounds())) {
+                enemies.erase(enemies.begin() + i);
+                player.HP--;
+                break;
+            }
+        }
+    }
+
+public:
+    Game2()
+        : window(VideoMode(1366, 768), "Shooter 360!", Style::Default), player(&playerTex), score(0), shootTimer(20), enemyTimer(20), dtMultiplier(62.5f) {
+        initWindow();
+        initFonts();
+        initTextures();
+        initTexts();
+    }
+
+    void run() {
+        while (window.isOpen()) {
+            Event event;
+            while (window.pollEvent(event)) {
+                if (event.type == Event::Closed)
+                    window.close();
+                if (event.type == Event::KeyPressed && event.key.code == Keyboard::Escape)
+                    window.close();
+            }
+
+            dt = clock.restart().asSeconds() * dtMultiplier;
+
+            if (player.HP > 0) {
+                updatePlayer();
+                updateBullets();
+                updateEnemies();
+            }
+
+            render();
+        }
+    }
+
+    void render() {
+        window.clear();
+
+        // Debug prints
+        std::cout << "Rendering player at position: (" << player.shape.getPosition().x << ", " << player.shape.getPosition().y << ")" << std::endl;
+        std::cout << "Score: " << score << std::endl;
+
+        window.draw(player.shape);
+
+        for (int i = 0; i < player.bullets.size(); i++) {
+            window.draw(player.bullets[i].shape);
+        }
+
+        for (int i = 0; i < enemies.size(); i++) {
+            ehp1.setString(std::to_string(enemies[i].HP) + "/" + std::to_string(enemies[i].HPMAX));
+            ehp1.setPosition(enemies[i].shape.getPosition().x, enemies[i].shape.getPosition().y - ehp1.getGlobalBounds().height);
+            window.draw(ehp1);
+            window.draw(enemies[i].shape);
+        }
+
+        window.draw(scoreT);
+        window.draw(hp1);
+
+        if (player.HP <= 0) {
+            window.draw(end);
+        }
+
+        window.display();
+    }
+};
+
+
+
+
+
+
+
+
+
 
 class Tile{
     private:
@@ -43,6 +309,7 @@ class Tile{
         this->shape.setSize(Vector2f(gridSzieF, gridSzieF));
         this->shape.setPosition(x * gridSzieF, y * gridSzieF);
         this->shape.setTexture(&texture);
+        // this->shape.scale(Vector2f(3.5, 3.5));
         // IntRect currentFrame = IntRect(0, 0, 48, 30);
         this->shape.setTextureRect(textureRect);
 
@@ -62,6 +329,15 @@ class Tile{
     const bool& getCollision() const {
         return this->collision;
     }
+    const FloatRect getGlobalBounds() const {
+        return this->shape.getGlobalBounds();
+    }
+    const bool intersects(const FloatRect bounds) const{
+        return this->shape.getGlobalBounds().intersects(bounds);
+    }
+    const int& getType(){
+        return this->type;
+    }
 
     void update(){
 
@@ -72,11 +348,174 @@ class Tile{
     }
 };
 
-class TileMap{  
+class Button{ //====================================================  BUTTON  ===========================================================
+private:
+    int buttonState;
+
+    RectangleShape button;
+    Font font;
+    Text text;
+
+    Color textIdle;
+    Color texthover;
+    Color textactive;
+    Color idleColor;
+    Color hoverColor;
+    Color activeColor;
+
+public:
+    Button(float x, float y, float width, float height, Font &font, string text, unsigned character_Size,
+           Color text_idle_color, Color text_hover_color, Color text_active_color, Color idleColor,
+           Color hoverColor, Color activeColor)
+        : idleColor(idleColor), hoverColor(hoverColor), activeColor(activeColor), font(font), textIdle(text_idle_color), texthover(text_hover_color), textactive(text_active_color)
+    {
+        button.setPosition(Vector2f(x, y));
+        button.setSize(Vector2f(width, height));
+        button.setFillColor(idleColor);
+
+        this->text.setFont(font);
+        this->text.setString(text);
+        this->text.setFillColor(text_idle_color);
+        this->text.setCharacterSize(character_Size);
+        this->text.setPosition(
+            button.getPosition().x + (button.getGlobalBounds().width / 2.f) - this->text.getGlobalBounds().width / 2.f,
+            button.getPosition().y + (button.getGlobalBounds().height / 2.f) - this->text.getGlobalBounds().height / 2.f);
+
+        buttonState = BTN_IDLE;
+    }
+    virtual ~Button()
+    {
+    }
+
+    const bool isPressed() const
+    {
+        return buttonState == BTN_ACTIVE;
+    }
+
+    void update(const Vector2i& mousePosWindow)
+    {
+        // IDLE
+        this->buttonState = BTN_IDLE;
+
+        // HOVER
+        if(this->button.getGlobalBounds().contains(static_cast<Vector2f>(mousePosWindow))){
+            this->buttonState = BTN_HOVER;
+
+            // PRESSED
+            if(Mouse::isButtonPressed(Mouse::Left)){
+                this->buttonState = BTN_ACTIVE;
+            }
+        }
+
+        if (this->buttonState == BTN_HOVER)
+        {
+            this->button.setFillColor(hoverColor);
+            this->text.setFillColor(this->texthover);
+        }
+        else if (this->buttonState == BTN_ACTIVE)
+        {
+            this->button.setFillColor(activeColor);
+            this->text.setFillColor(this->textactive);
+        }
+        else if (this->buttonState == BTN_IDLE)
+        {
+            this->button.setFillColor(idleColor);
+            this->text.setFillColor(this->textIdle);
+        }
+        else
+        {
+            this->button.setFillColor(Color::Red);
+            this->text.setFillColor(Color::Blue);
+        }
+    }
+
+    void draw(RenderTarget &target)
+    {
+        target.draw(this->button);
+        target.draw(this->text);
+    }
+};
+
+class Entity{  // ===================================================  ENTITY  ============================================================
+    protected:
+    Sprite sprite;
+    float movementSpeed;
+
+    Vector2f velocity;
+
+    // AnimationComponent *animationComponent;
+
+    public:
+    // constructor / destructor
+    Entity(){
+        this->movementSpeed = 100.f;
+        // this->animationComponent = nullptr;
+        // this->sprite.setScale(Vector2f(2, 2));
+    }
+    virtual ~Entity(){
+        // delete this->animationComponent;
+    }
+    //  void setAnimationComponent(Texture &textureSheet)
+    // {
+    //     this->animationComponent = new AnimationComponent(this->sprite, textureSheet);
+    // }
+    void setTexture(Texture &texture)
+    {
+        this->sprite.setTexture(texture);
+        // this->sprite.setScale(Vector2f(1.f, 1.f));
+    }
+
+    // new fucntions
+    const Vector2f& getPosition(){
+        return this->sprite.getPosition();
+    }
+    const FloatRect getGlobalBounds(){
+        return this->sprite.getGlobalBounds();
+    }
+    virtual void setPosition(const float x, const float y){
+            this->sprite.setPosition(x,y);
+    }
+    // void updateAnimation(const float &dt)
+    // {   
+    //     if(this->velocity.x > 0){
+    //         this->animationComponent->play("WALK", dt,true);  
+    //         this->sprite.setOrigin(0.f, 0.f);
+    //     }else if(this->velocity.x < 0){
+
+    //         sprite.setScale(-(sprite.getScale().x), sprite.getScale().y);
+    //         this->sprite.setOrigin(this->sprite.getGlobalBounds().width / 3.f , 0.f);
+    //         this->animationComponent->play("WALK",dt, true);
+    //     }
+    //     else if(this->velocity.x == 0){
+    //         this->animationComponent->play("IDLE", dt,true);
+    //     }
+    
+    // }
+    Vector2f& getVelocity(){
+        return this->velocity;
+    }
+
+    virtual void move(const float& dt, const float x, const float y){
+        this->velocity = Vector2f(x * this->movementSpeed * dt,  y * this->movementSpeed * dt);
+        this->sprite.move(this->velocity);
+
+        // this->updateAnimation(dt);
+    }
+
+    virtual void update(const float& dt){
+        
+    };
+    virtual void draw(RenderTarget* target){
+            target->draw(this->sprite);
+    };
+};
+
+class TileMap{  //===================================================  TILEMAP  ============================================================ 
     private:
     float gridSizeF;
     unsigned gridSizeU;
-    Vector2u maxSize;
+    Vector2u maxSizeWorldGrid;
+    Vector2f maxSizeWorldF;
     unsigned layers;
     vector<vector<vector<Tile* > > > mp;
     Texture tileTextureSheet;
@@ -84,33 +523,34 @@ class TileMap{
     
     RectangleShape collisionBox;
 
+    //Culling
+    int fromX;
+    int toX;
+    int fromY;
+    int toY;
+    int layer;
+
     public:
     TileMap(float gridSize, unsigned width, unsigned height, const string textureFile) {
         this->gridSizeF = GRID_SIZE;
         this->gridSizeU = static_cast<unsigned>(this->gridSizeF);
-        this->maxSize.x = width + 10; //// this was only width by default
-        this->maxSize.y = height + 10;  //// this was only height by default
+        this->maxSizeWorldGrid.x = width + 10; //// this was only width by default
+        this->maxSizeWorldGrid.y = height + 10;  //// this was only height by default
+        this->maxSizeWorldF.x = width * GRID_SIZE;
+        this->maxSizeWorldF.y = height * GRID_SIZE;
         this->layers = 1;
         this->textureFile = textureFile;
 
-        // this->mp.resize(this->maxSize.x);
-        // for(int i=0;i < maxSize.x; i++){
-        //     this->mp.push_back(vector<vector<Tile*>>());
+        this->fromX = 0;
+        this-> toX = 0;
+        this->fromY = 0;
+        this->toY = 0;
+        this->layer = 0;
 
-        //     for(int j=0;j < maxSize.y ; j++){
-        //         this->mp[i].resize(this->maxSize.y);
-        //         this->mp[j].push_back(vector<Tile*>());
-
-        //         for(int k = 0;k < layers; k++){
-        //             this->mp[i][j].resize(this->layers);
-        //             this->mp[i][j].push_back(NULL);
-        //         }
-        //     }
-        // }
-        this->mp.resize(this->maxSize.x);
-        for (int i = 0; i < this->maxSize.x; i++) {
-            this->mp[i].resize(this->maxSize.y);
-            for (int j = 0; j < this->maxSize.y; j++) {
+        this->mp.resize(this->maxSizeWorldGrid.x);
+        for (int i = 0; i < this->maxSizeWorldGrid.x; i++) {
+            this->mp[i].resize(this->maxSizeWorldGrid.y);
+            for (int j = 0; j < this->maxSizeWorldGrid.y; j++) {
                 this->mp[i][j].resize(this->layers, nullptr);  // Initialize each element to nullptr
             }
         }
@@ -126,11 +566,93 @@ class TileMap{
     }
 
     bool isValidPos(const unsigned x, const unsigned y, const unsigned z){
-        return (x < this->maxSize.x && x >= 0 &&  y < this->maxSize.y && y >= 0 && z < this->layers && z >= 0);
+        return (x < this->maxSizeWorldGrid.x && x >= 0 &&  y < this->maxSizeWorldGrid.y && y >= 0 && z < this->layers && z >= 0);
     }
     const Texture* getTileSheet() const {
         return &this->tileTextureSheet;  
     }
+    // void checkCollision(Entity* entity, const float& dt){
+    // }
+    void checkCollision(Entity* entity, const float& dt){
+        if(entity->getPosition().y < 0.f){
+            entity->setPosition(entity->getPosition().x, 0.f); // Collision on the bottom.
+
+        }else if(entity->getPosition().y + entity->getGlobalBounds().height> this->maxSizeWorldF.y){   // Collision on the top.
+            
+            entity->setPosition(entity->getPosition().x, this->maxSizeWorldF.y - entity->getGlobalBounds().height);
+        }
+        //TILES
+
+        // {
+        //     this->layer = 0;
+        //     this->fromX = entity->getGridPosition(this->gridSizeU).x - 2;
+        //     if (this->fromX < 0)
+        //     {
+        //         this->fromX = 0;
+        //     }
+        //     else if(this-> fromX > this->maxSizeWorldGrid.x){
+        //         this->fromX = maxSizeWorldGrid.x;
+        //     }
+            
+        //     this->toX = entity->getGridPosition(this->gridSizeU).x + 1;
+        //     if (this->toX < 0)
+        //     {
+        //         this->toX = 0;
+        //     }
+        //     else if(this-> toX > this->maxSizeWorldGrid.x){
+        //         this->toX = maxSizeWorldGrid.x;
+        //     }
+
+        //     this->fromY = entity->getGridPosition(this->gridSizeU).y - 2;
+        //     if (this->fromY < 0)
+        //     {
+        //         this->fromY = 0;
+        //     }
+        //     else if(this-> fromY > this->maxSizeWorldGrid.y){
+        //         this->fromY = maxSizeWorldGrid.y;
+        //     }
+
+        //     this->toY = entity->getGridPosition(this->gridSizeU).y + 1;
+        //     if (this->toY < 0)
+        //     {
+        //         this->toY = 0;
+        //     }
+        //     else if(this-> toY > this->maxSizeWorldGrid.y){
+        //         this->toY = maxSizeWorldGrid.y;
+
+        //     }
+        // }
+        
+        // for(size_t x = this->fromX; x < this->toX; x++){
+        //     for(size_t y = this->fromY; y < this->toY; y++){
+        //         FloatRect playerBounds = entity->getGlobalBounds();
+        //         FloatRect wallBounds = this->mp[x][y][this->layer]->getGlobalBounds();
+        //         FloatRect nextPositionBounds = entity->getNextPositionBounds(dt);
+
+        //         if(this->mp[x][y][this->layer]->getCollision() && this->mp[x][y][this->layer]->intersects(nextPositionBounds));{
+        //             //Bottom collision
+        //             if(playerBounds.top < wallBounds.top
+        //                 && playerBounds.top + playerBounds.height < wallBounds.top + wallBounds.height
+        //                 && playerBounds.left < wallBounds.left + wallBounds.width
+        //                 && playerBounds.left + playerBounds.width > wallBounds.left){
+
+        //                 entity->stopVelocityY();
+        //                 entity ->setPosition(playerBounds.left, wallBounds.top - playerBounds.height);
+
+        //             // Top COllision
+        //             }else if(playerBounds.top > wallBounds.top
+        //                 && playerBounds.top + playerBounds.height < wallBounds.top + wallBounds.height
+        //                 && playerBounds.left < wallBounds.left + wallBounds.width
+        //                 && playerBounds.left + playerBounds.width > wallBounds.left){
+
+        //                 entity->stopVelocityY();
+        //                 entity ->setPosition(playerBounds.left, wallBounds.top + playerBounds.height);
+        //             }
+        //         }
+        //     }
+        // }
+    }
+
 
     void clear(){
         for(auto &x : this->mp){
@@ -149,14 +671,14 @@ class TileMap{
         out_file.open(fileName);
 
         if(out_file.is_open()){
-            out_file << this->maxSize.x << " " << this->maxSize.y 
+            out_file << this->maxSizeWorldGrid.x << " " << this->maxSizeWorldGrid.y 
             << "\n" << this->gridSizeU 
             << "\n" << this->layers
             << "\n" << this->textureFile
             << "\n";
               
-            for(int i=0;i < maxSize.x; i++){
-                for(int j=0;j < maxSize.y ; j++){
+            for(int i=0;i < maxSizeWorldGrid.x; i++){
+                for(int j=0;j < maxSizeWorldGrid.y ; j++){
                     for(int k = 0;k < layers; k++){
                         if(this->mp[i][j][k])
                             out_file << i << " " << j << " " << k << " " << this->mp[i][j][k]->getString() << " ";                    
@@ -189,8 +711,8 @@ class TileMap{
 
             this->gridSizeF = (float)gridSize;
             this->gridSizeU = gridSize;
-            this->maxSize.x = size.x;
-            this->maxSize.y = size.y;
+            this->maxSizeWorldGrid.x = size.x;
+            this->maxSizeWorldGrid.y = size.y;
             this->layers = layers;
             this->textureFile = texture_file;
 
@@ -205,12 +727,12 @@ class TileMap{
             //     }
             // }
 
-            this->mp.resize(this->maxSize.x, vector<vector<Tile*>>());
-            for (size_t x = 0; x < maxSize.x; x++)
+            this->mp.resize(this->maxSizeWorldGrid.x, vector<vector<Tile*>>());
+            for (size_t x = 0; x < maxSizeWorldGrid.x; x++)
             {
-                for (size_t y = 0; y < maxSize.y; y++)
+                for (size_t y = 0; y < maxSizeWorldGrid.y; y++)
                 {
-                    this->mp[x].resize(this->maxSize.y, vector<Tile*>());
+                    this->mp[x].resize(this->maxSizeWorldGrid.y, vector<Tile*>());
                     for (size_t z = 0; z < layers; z++)
                     {
                         this->mp[x][y].resize(this->layers, nullptr);
@@ -241,12 +763,11 @@ class TileMap{
         }
     }
     
-
     void update(){
 
     }
 
-    void draw(RenderTarget& target){
+    void draw(RenderTarget& target, Entity* entity = nullptr){
         for(auto &i : this->mp){
             for(auto &j : i){
                 for(auto *k : j){
@@ -263,152 +784,441 @@ class TileMap{
 
 };
 
-class Entity{  // ===================================================  ENTITY  ============================================================
+class Bullet{
+    RectangleShape shape;
+    Vector2f position;
+    Vector2f velocity;
+    Texture texture;
 
-    protected:
-    Texture* texture;
-    Sprite* sprite;
-
-    float movementSpeed;
-
+    Vector2f normalize(Vector2f direction){
+        float length = sqrt(direction.x * direction.x + direction.y * direction.y);
+        return Vector2f(direction.x / length, direction.y / length);
+    }
+    
     public:
-    // constructor / destructor
-    Entity(){
-        this->texture = NULL;
-        this->sprite = NULL;
-        this->movementSpeed = 100.f;
-    }
-    virtual ~Entity(){
-        delete this->sprite;
-    }
+    Bullet(Texture& bulletTexture ,Vector2f startPos, Vector2f targetPosition) : position(startPos) {
+        this->shape.setSize(Vector2f(10.f, 10.f));
+        // this->shape.setFillColor(Color::Red);
+        this->shape.setPosition(startPos);
+        this->shape.setOrigin(5.0f, 5.0f);
+        this->shape.setTexture(&bulletTexture);
 
-    virtual const Vector2f& getPosition() const{
-        return this->sprite->getPosition();
-    }
-
-    void setSprite(Texture* texture){
-        this->texture = texture;
-        this->sprite = new Sprite(*this->texture);
-        this->sprite->setScale(Vector2f(0.2f, 0.2f));
-    }
-    virtual void setPosition(const float x, const float y){
-        if(this->sprite)
-            this->sprite->setPosition(x,y);
-    }
-    virtual void move(const float& dt, const float x, const float y){
-        if(this->sprite)
-            this->sprite->move(x * this->movementSpeed * dt, y * this->movementSpeed * dt);
-    }
-
-    virtual void update(const float& dt){
         
-    };
-    virtual void draw(RenderTarget* target){
-        if(this->sprite)
-            target->draw(*this->sprite);
-    };
+        this->velocity = targetPosition * BULLET_SPEED;
+    }
+    RectangleShape getShape(){
+        return this->shape;
+    }
+    void setScale(Vector2f scale){
+        this->shape.setScale(scale);
+    }
+    void update(const float& dt){
+        position += Vector2f(velocity * dt * BULLET_SPEED);
+        shape.setPosition(position);
+    }
+
+    void draw(RenderTarget& target){
+        target.draw(this->shape);
+    }
 };
 
-class Player : public Entity{  //===================================================  PLAYER  ============================================================
+class Player : public Entity{  //======================================  PLAYER  ============================================================
     private:
-    // Sprite sprite;
+    bool attacking;
+    float gravity;
+    bool jump;
+    vector<Bullet> bullets;
+    Clock shootCoolDown;
+    Texture bulletTexture;
+
+    // Health bar
+    float TotalHealth;
+    float health;
+    RectangleShape bar;
+    RectangleShape outline;
+    Vector2f position;
+    float maxWidth;
+
+    // ANIMATION
+    int animationState;
+    IntRect currentFrame;
+    bool animSwitch;
+    Clock animationTimer;
+    Vector2f scale;
+    float velocityMin;
+    float velocityMax;
+    float drag;
+    float acceleration;
 
     void setVariable(){
+        this->attacking = false;
+        this->gravity = 3.f;
+        this->jump = false;
 
-    }
+        this->currentFrame = IntRect(0, 0, 40, 52);
+        this->animationTimer.restart();
+        this->animationState = IDLE;
+        this->animSwitch = true;
+        this->scale = Vector2f(2, 2);
+        this->velocityMin = 2.f;
+        this->velocityMax = 22.f;
+        this->acceleration = 3.f;
+        this->drag = 0.8;
+
+        this->sprite.setScale(this->scale);
+        this->sprite.setTextureRect(this->currentFrame);
+
+        this->bulletTexture.loadFromFile("Textures\\bullet.png");
+    }   
     void setComponents(){
 
     }
+    void setHealthBar(){
+        this->TotalHealth = 200;
+        this->health = 200;
+        this->bar.setSize(Vector2f(this->TotalHealth, 30));
+        this->bar.setPosition(Vector2f(1366/2 - 50, 20));
+        this->bar.setFillColor(Color::Red);
+
+        outline.setSize(Vector2f(this->TotalHealth, 30));
+        outline.setPosition(Vector2f(1366/2 - 50, 20));
+        outline.setFillColor(Color::Transparent);
+        outline.setOutlineThickness(1); // Adjust the thickness as needed
+        outline.setOutlineColor(Color::Red);
+    }
     public:
     // constructors/ destructors
-    Player(float x, float y, Texture* texture){
+    Player(float x, float y, Texture& texture){
         this->setVariable();
         this->setComponents();
-        this->setSprite(texture);
         this->setPosition(x, y);
+        this->setTexture(texture);
+        // this->setAnimationComponent(texture);
+        this->setHealthBar();
+
+        // this->animationComponent->addAnimation("IDLE",10.f, 0, 0, 4, 0, 40, 52);// it si the size of my texture sheert
+        // this->animationComponent->addAnimation("WALK",10.f, 0, 1, 9, 1, 40, 52);// it si the size of my texture sheert
+        // this->animationComponent->addAnimation("RIGHT",7.f,0, 3, 7, 3, 40, 52);// it si the size of my texture sheert
     }
-    Player(){}
     virtual ~Player(){
 
     }
 
     // Accessors
-
+    const Vector2f getPosition(){
+        return this->sprite.getPosition();
+    }
+    bool canJump(){
+        return this->jump;
+    }
+    void setcanJump(bool jump){
+        this->jump = jump;
+    }
+    void Jump(const float& dt){
+        // if (this->velocity.y >= 0){
+        this->velocity.y = -60.f;
+        this->jump = false;
+    
+        // this->sprite.move(velocity.x, velocity.y);
+    }
+    
     // Functions
-    void update(const float& dt){
+    void move(const float dir_x, const float dir_y){
+        // accelarion
+        this->velocity.x += dir_x * this->acceleration;
 
+        // limit velicty
+        if(abs(this->velocity.x) > this->velocityMax){
+            this->velocity.x = this->velocityMax * (this->velocity.x < 0) ? -1.f : 1.f; 
+        }
+    }
+    vector<Bullet>& getbullets(){
+        return bullets;
+    }
+    
+    
+    void updateHealthBar(){
+        health -= 0.05;
+        float ratio = this->health/this->TotalHealth;
+        this->bar.setSize(Vector2f(ratio * this->TotalHealth, this->bar.getSize().y));
+    }
+    void updatePhysics(){
+        // gravity
+        this->velocity.y += 1.0f * this->gravity;
+        
+        // deceleration
+        this->velocity *= this->drag;
+
+        // limiting deceleration
+        if(abs(this->velocity.x) < this->velocityMin){
+            velocity.x = 0;
+        }
+        if(abs(this->velocity.y) < this->velocityMin){
+            velocity.y = 0;
+        }
+
+        if(abs(this->velocity.x) <= 1.f)
+            this->velocity.x = 0.f;
+
+        this->sprite.move(this->velocity);
+    }
+    void updateAttack(){
+        if (Mouse::isButtonPressed(Mouse::Left)){
+            this->attacking = true;
+        }else{
+            this->attacking = false;
+        }
+    }
+    RectangleShape gethealthBar(){
+        return this->bar;
+    }
+    RectangleShape getBarOutline(){
+        return this->outline;
+    }
+    
+    bool getAnimSwitch() {
+        bool temp = this->animSwitch;
+        this->animSwitch = false;
+        return temp;
+    }
+    void updateAnimation(){ // 123
+        float speedPercent = (abs(this->velocity.x) / this->velocityMax);
+
+        if(this->animationState == IDLE){
+
+            if(this->animationTimer.getElapsedTime().asMilliseconds() >= 200.f || this->getAnimSwitch()){ // IDLE Animation
+                this->currentFrame.top = 0.f;
+                this->currentFrame.left += 40.f;
+
+                if(this->currentFrame.left >= 160.f){
+                    this->currentFrame.left = 0;
+                }
+                
+                this->animationTimer.restart();
+                this->sprite.setTextureRect(this->currentFrame);
+            }
+
+        }else if(this->animationState == RIGHT){
+            if(this->animationTimer.getElapsedTime().asMilliseconds() >= 40.f / speedPercent  || this->getAnimSwitch()){ // MOVING RIGHT Animation
+                this->currentFrame.top = 50.f;
+                this->currentFrame.left += 40.f;
+
+                if(this->currentFrame.left >= 360.f){
+                    this->currentFrame.left = 0;
+                }
+                
+                this->animationTimer.restart();
+                this->sprite.setTextureRect(this->currentFrame);
+            }
+                this->sprite.setScale(this->scale);
+                this->sprite.setOrigin(0.f, 0.f);
+
+        }else if(this->animationState == LEFT){
+            if(this->animationTimer.getElapsedTime().asMilliseconds() >= 40.f / speedPercent || this->getAnimSwitch()){ // MOVING LEFT Animation
+                this->currentFrame.top = 50.f;
+                this->currentFrame.left += 40.f;
+
+                if(this->currentFrame.left >= 160.f){
+                    this->currentFrame.left = 0;
+                }
+                
+                this->animationTimer.restart();
+                this->sprite.setTextureRect(this->currentFrame);
+            }
+                this->sprite.setScale(-(this->scale.x), this->scale.y);
+                this->sprite.setOrigin(this->sprite.getGlobalBounds().width / 3.f , 0.f);
+        }else{
+            this->animationTimer.restart();
+        }
+    }
+    void updateMovement(){  // 123
+
+        if(this->velocity.x > 0.f){
+             this->animationState = RIGHT;
+        }else if(this->velocity.x < 0.f){
+             this->animationState = LEFT;
+        }else{
+             this->animationState = IDLE;
+        }
+    }
+    Vector2f normalize(const Vector2f& position){
+        float length = sqrt(position.x * position.x + position.y * position.y);
+        return position / length;
     }
 
+   bool canAttack(const RenderWindow &window, const View& view){
+        Vector2f position = this->sprite.getPosition(); // Use sprite's position directly
+        Vector2f MousePosition = window.mapPixelToCoords(Mouse::getPosition(window), view); // Convert mouse position to world coordinates
+        Vector2f aimDirection = MousePosition - position;
+
+        aimDirection = normalize(aimDirection);
+
+        if (shootCoolDown.getElapsedTime().asMilliseconds() >= 200){
+            this->bullets.push_back(Bullet(bulletTexture, this->sprite.getPosition(), aimDirection));
+            
+            shootCoolDown.restart();
+            return true;
+        }
+        return false;
+    }
+    FloatRect getGlobalBounds(){
+        return this->sprite.getGlobalBounds();
+    }
+    void updateCollision(RenderTarget& target){
+        if(this->sprite.getPosition().y + this->sprite.getGlobalBounds().height >= 768/2){
+            this->jump = true;
+            velocity.y = 0;
+
+            this->sprite.setPosition(  this->sprite.getPosition().x,
+                    768/2 - this->sprite.getGlobalBounds().height);
+        }
+
+        // if(this->position.y + 100 >= target.getSize().y){
+        //     this->jump = true;
+        // }
+        CircleShape circle;
+        circle.setFillColor(Color::Red);
+        circle.setRadius(10.f);
+        circle.setPosition(Vector2f(50, 768/2));
+
+        target.draw(circle);
+    }
+
+    void update(const float& dt){
+        this->updateAttack();
+        this->updateHealthBar();
+        this->updateMovement();
+        this->updateAnimation();
+        this->updatePhysics();
+        
+        for(auto& bullet : bullets){
+            bullet.update(dt);
+        }
+    }
+    
+    void drawButtons(RenderTarget& target){
+        for(int i = 0;i < bullets.size(); i++){
+            
+            if(bullets[i].getShape().getPosition().x < - 1366/2){
+                bullets.erase(bullets.begin() + i, bullets.begin() + i + 1);
+            }
+            // this->bullets[0].setScale(Vector2f(5, 5));
+            target.draw(bullets[i].getShape());
+        }
+    }
     void draw(RenderTarget& target){
-        target.draw(*this->sprite);
+        target.draw(this->sprite);
+        this->updateCollision(target);
+        this->drawButtons(target);
     }
 };
 
-class Button{ //===================================================  BUTTON  ============================================================
+class Enemy{
     private:
-    int buttonState;
+    // bool attacking;
+    // bool dead;
 
-    RectangleShape button;
-    Font font;
-    Text text;
+    Texture* texture;
+    Texture bulletTexture;
+    RectangleShape shape;
+    Player* player;
+    Vector2f position;
 
-    Color idleColor;
-    Color hoverColor;
-    Color activeColor;
+    vector<Bullet> bullets;
+    Clock shootCoolDown;
+
+    void setbullets(){
+
+    }
+    void setVariable(){
+        // this->attacking = false;
+    }
+    void setTexture(){
+        this->texture = new Texture();
+        int random = rand() % 3 + 1;
+        if(random == 1){
+            this->texture->loadFromFile("Textures\\PNGs\\Nairan - Battlecruiser - Base.png");
+            this->bulletTexture.loadFromFile("Textures\\bullets\\battlecruiser.png");
+            shape.setScale(Vector2f(2, 2));
+        }else if(random == 2){
+            this->texture->loadFromFile("Textures\\PNGs\\Nairan - Torpedo Ship - Base.png");
+            this->bulletTexture.loadFromFile("Textures\\bullets\\torpedo.png");
+            shape.setScale(Vector2f(3, 3));
+        }else{
+            this->texture->loadFromFile("Textures\\PNGs\\Nairan - Dreadnought - Base.png");
+            this->bulletTexture.loadFromFile("Textures\\bullets\\7_2.png");
+            shape.setScale(Vector2f(2, 2));
+        }
+
+    }
+    
+    Vector2f normalize(const Vector2f& position){
+        float length = sqrt(position.x * position.x + position.y * position.y);
+        return Vector2f(position.x / length, position.y / length);
+    }
+
+    float calculateAngle(){
+        float dx = player->getPosition().x - this->position.x;
+        float dy = player->getPosition().y - this->position.y;
+
+        return atan2(dy, dx) * 180 / 3.14159265;
+    }
 
     public:
-    Button(float x, float y, float width, float height, Font& font, string text, 
-        Color idleColor, Color hoverColor, Color activeColor) : idleColor(idleColor), 
-        hoverColor(hoverColor), activeColor(activeColor), font(font) {
-        button.setPosition(Vector2f(x, y));
-        button.setSize(Vector2f(width, height));
-        
-        this->text.setFont(font);
-        this->text.setString(text);
-        this->text.setFillColor(Color::Magenta);
-        this->text.setCharacterSize(12);
-        this->text.setPosition(
-            button.getPosition().x + (button.getGlobalBounds().width / 2.f) - this->text.getGlobalBounds().width / 2.f,
-            button.getPosition().y + (button.getGlobalBounds().height / 2.f) - this->text.getGlobalBounds().height / 2.f
-        );
+    Enemy(Vector2f StartPosition, Player* player) : player(player), position(StartPosition) {
+        this->setVariable();
+        this->setTexture();
 
-        button.setFillColor(idleColor);
-        buttonState = BTN_IDLE;
+        // shape.setFillColor(Color::Red);
+        shape.setSize(Vector2f(30.f, 30.f));
+        shape.setOrigin(15.0f, 15.0f);
+        shape.setPosition(this->position);
+        shape.setTexture(this->texture);
     }
-    virtual ~Button(){
-
+    virtual ~Enemy(){
+    }
+    FloatRect getGlobalBounds(){
+        return this->shape.getGlobalBounds();
+    }
+    RectangleShape& getShape(){
+        return this->shape;
     }
 
-    const bool isPressed() const {
-        return buttonState == BTN_ACTIVE;
+    void updatebullets(const float& dt){
+        if(shootCoolDown.getElapsedTime().asMilliseconds() >= 400){
+            this->bullets.push_back(Bullet(bulletTexture, this->position, normalize(this->player->getPosition() - this->position)));
+            shootCoolDown.restart();
+        }
+
+        for(int i=0;i < bullets.size(); i++){
+            bullets[i].update(dt);
+
+            if(bullets[i].getShape().getGlobalBounds().intersects(player->getGlobalBounds())){
+                bullets.erase(bullets.begin() + i, bullets.begin() + i + 1);
+            }
+        }   
+    }
+    void update(const float& dt){
+        Vector2f direction = this->player->getPosition() - this->position;
+        direction = normalize(direction);
+        this->position += static_cast<Vector2f>(direction * ENEMY_SPEED * dt);
+        shape.setPosition(this->position);
+
+        this->shape.setRotation(calculateAngle() + 90.0);
+
+        this->updatebullets(dt);
     }
 
-    void update(const Vector2i& mousePosWindow){
-        // IDLE
-        this->buttonState = BTN_IDLE;
+    void draw(RenderTarget& target){
 
-        // HOVER
-        if(this->button.getGlobalBounds().contains(static_cast<Vector2f>(mousePosWindow))){
-            this->buttonState = BTN_HOVER;
+        for(int i = 0;i < bullets.size(); i++){  
+            // bullets[i].getVelocity() = (this->shape.getPosition() - this->player->getPosition()) /  sqrt(position.x * position.x + position.y * position.y);
+            target.draw(bullets[i].getShape());
 
-            // PRESSED
-            if(Mouse::isButtonPressed(Mouse::Left)){
-                this->buttonState = BTN_ACTIVE;
+            if(bullets[i].getShape().getPosition().x < -1366/2){
+                bullets.erase(bullets.begin() + i);
             }
         }
-
-        if(this->buttonState == BTN_HOVER){
-            this->button.setFillColor(hoverColor);
-        }else if(this->buttonState == BTN_ACTIVE){
-            this->button.setFillColor(activeColor);
-        }else{
-            this->button.setFillColor(idleColor);
-        }
-    }
-
-    void draw(RenderTarget* target){
-        target->draw(this->button);
-        target->draw(this->text);
     }
 };
 
@@ -479,7 +1289,7 @@ class State{ // ABSTRACT CLASSES ======================================  STATE  
         virtual void draw(RenderTarget* target = nullptr) = 0;
 };
 
-class TextureSelector{
+class TextureSelector{   //==========================================  TEXTURE SELECTOR  =======================================================
     private:
     RectangleShape bounds;
     Sprite sheet;
@@ -526,7 +1336,7 @@ class TextureSelector{
         this->textureRect.width = GRID_SIZE;
         this->textureRect.height = GRID_SIZE;
 
-        this->hideButton = new Button(x, y, 50, 50, font, text, Color(200, 200, 200), Color(150, 150, 150), Color(0, 0, 255));
+        this->hideButton = new Button(x, y, 50, 50, font, text, 12, Color::Magenta, Color(0, 0, 0), Color::Magenta, Color(200, 200, 200), Color(150, 150, 150), Color(0, 0, 255));
         // this->quitButton = new Button(x, y + 200, 50, 50, font, "QUIT", Color(200, 200, 200), Color(150, 150, 150), Color(0, 0, 255));
     }
     ~TextureSelector(){
@@ -605,12 +1415,12 @@ class TextureSelector{
         }
         if(this->active)
             target.draw(this->selector);
-        this->hideButton->draw(&target);
+        this->hideButton->draw(target);
         // this->quitButton->draw(&target);
     }
 };
 
-class EditorState : public State{ //====================================  EDITORSTATE  ============================================================
+class EditorState : public State{ //=================================  EDITORSTATE  ============================================================
     private:
     View mainView;
     float cameraSpeed;
@@ -635,6 +1445,7 @@ class EditorState : public State{ //====================================  EDITOR
     void setView(){
         // VideoMode desktopMode = VideoMode::getDesktopMode();
         this->mainView.setSize(Vector2f(1366, 768));
+        // this->mainView.setSize(Vector2f(window->getSize()));
         this->mainView.setCenter(1366 / 2.0, 768 / 2.0);
         cameraSpeed = 100.f;
     }
@@ -682,9 +1493,9 @@ class EditorState : public State{ //====================================  EDITOR
     }
     void setButtons(){
         
-        this->quitButton = new Button(5, 200, 50, 50, font, "QUIT", Color(200, 200, 200), Color(150, 150, 150), Color(0, 0, 255));
-        this->loadButton = new Button(5, 300, 50, 50, font, "LOAD", Color(200, 200, 200), Color(150, 150, 150), Color(0, 0, 255));
-        this->saveButton = new Button(5, 400, 50, 50, font, "SAVE", Color(200, 200, 200), Color(150, 150, 150), Color(0, 0, 255));
+        this->quitButton = new Button(5, 200, 50, 50, font, "QUIT", 12, Color::Magenta, Color(0, 0, 0), Color::Magenta, Color(200, 200, 200), Color(150, 150, 150), Color(0, 0, 255));
+        this->loadButton = new Button(5, 300, 50, 50, font, "LOAD", 12, Color::Magenta, Color(0, 0, 0), Color::Magenta, Color(200, 200, 200), Color(150, 150, 150), Color(0, 0, 255));
+        this->saveButton = new Button(5, 400, 50, 50, font, "SAVE", 12, Color::Magenta, Color(0, 0, 0), Color::Magenta, Color(200, 200, 200), Color(150, 150, 150), Color(0, 0, 255));
     }
     void setTileMap(){
         this->textureRect = IntRect(0, 0, 48, 30);
@@ -737,15 +1548,15 @@ class EditorState : public State{ //====================================  EDITOR
     }
     void updateInput(const float& dt){
         if(Keyboard::isKeyPressed(Keyboard::Key(this->keyBinds.at("CAMERA_UP")))){
-            this->mainView.move(0, -this->cameraSpeed * dt);
+            this->mainView.move(0, -floor(this->cameraSpeed * dt));
         }else if(Keyboard::isKeyPressed(Keyboard::Key(this->keyBinds.at("CAMERA_DOWN")))){
-            this->mainView.move(0, this->cameraSpeed * dt);
+            this->mainView.move(0, floor(this->cameraSpeed * dt));
         }
 
         if(Keyboard::isKeyPressed(Keyboard::Key(this->keyBinds.at("CAMERA_LEFT")))){
-            this->mainView.move(-this->cameraSpeed * dt, 0);
+            this->mainView.move(-floor(this->cameraSpeed * dt), 0);
         }else if(Keyboard::isKeyPressed(Keyboard::Key(this->keyBinds.at("CAMERA_RIGHT")))){
-            this->mainView.move(this->cameraSpeed * dt, 0);
+            this->mainView.move(floor(this->cameraSpeed * dt), 0);
         }
 
         if(Keyboard::isKeyPressed(Keyboard::Key(this->keyBinds.at("CLOSE"))) || quitButton->isPressed()){
@@ -825,12 +1636,12 @@ class EditorState : public State{ //====================================  EDITOR
     }
     void drawButtons(RenderTarget& target){
         for(auto &button : buttons){
-            button.second->draw(&target);
+            button.second->draw(target);
         }
         
-        quitButton->draw(&target);
-        saveButton->draw(&target);
-        loadButton->draw(&target);
+        quitButton->draw(target);
+        saveButton->draw(target);
+        loadButton->draw(target);
     }
     void draw(RenderTarget* target = NULL){
         if(!target)
@@ -846,7 +1657,7 @@ class EditorState : public State{ //====================================  EDITOR
 
 };
 
-class GameState : public State{  //====================================  GAMESTATE  ============================================================
+class GameState : public State{  //==================================  GAMESTATE  ============================================================
     private:
     // Entity player;
     View mainView;
@@ -858,7 +1669,30 @@ class GameState : public State{  //====================================  GAMESTA
     Texture bgtexture;
 
     TileMap* mp;
+    map<string, Button*> buttons;
+    Font font;
 
+    int maxEnemies;  //123
+    vector<Enemy> enemies; //123
+    Vector2f enemyPosition;
+
+    void setEnemeis(){ //123
+        this->maxEnemies = 10;
+        while(enemies.size() < maxEnemies){
+            this->enemyPosition = Vector2f(rand() % window->getSize().x + 1.f, 0);
+            enemies.push_back(Enemy(enemyPosition, player));  // putting randon position
+        }
+    }
+    void setFonts(){
+        if(!this->font.loadFromFile("Fonts\\PublicPixel-E447g.ttf")){
+            
+        }
+    }
+    void setButtons(){
+        this->buttons["EXIT"] = new Button(10.f, 10.f, 50.f, 50.f, this->font, "EXIT", 12,
+                Color::Magenta, Color(0, 0, 0), Color::Magenta,
+                Color(200, 200, 200), Color(150, 150, 150), Color(0, 0, 255));
+    }
     void setView(){
         this->mainView.setSize(Vector2f(1366 , 768));
         this->mainView.setCenter(Vector2f(1366/2 , 768/2));
@@ -880,13 +1714,13 @@ class GameState : public State{  //====================================  GAMESTA
 
             this->keyBinds["MOVE_LEFT"] = this->Keys->at("A");
             this->keyBinds["MOVE_RIGHT"] = this->Keys->at("D");
-            this->keyBinds["MOVE_UP"] = this->Keys->at("W");
-            this->keyBinds["MOVE_DOWN"] = this->Keys->at("S");
+            this->keyBinds["JUMP"] = this->Keys->at("W");
 
     }
     void setPlayer(){
-        this->textures["PLAYER_IDLE"].loadFromFile("Textures\\Player.png");
-        this->player = new Player(0, 0, &this->textures["PLAYER_IDLE"]);
+        // this->textures["PLAYER_IDLE"].loadFromFile("Textures\\TextureSheet.png");
+        this->textures["PLAYER_IDLE"].loadFromFile("Textures\\player_sheet.png");
+        this->player = new Player(0, window->getSize().y, this->textures["PLAYER_IDLE"]);
     }
     void setTileMap(){
         this->mp = new TileMap(GRID_SIZE, 10, 10,  "Textures\\TileSet_Gras_Works.png");
@@ -899,9 +1733,13 @@ class GameState : public State{  //====================================  GAMESTA
         this->setdefferedRender();
         this->setbackground();
         this->setKeyBinds();
+        this->setFonts(); // 
+        this->setButtons(); //
         this->setTileMap();
         this->setPlayer();
+        this->setEnemeis();  // 123
     }
+
     virtual ~GameState(){
         delete this->mp;
         delete this->player;
@@ -909,26 +1747,61 @@ class GameState : public State{  //====================================  GAMESTA
 
     // functions
     void updateView(const float& dt){
-        this->mainView.setCenter(this->player->getPosition());
+        this->mainView.setCenter(floor(this->player->getPosition().x), floor(this->player->getPosition().y)); // can delete floor later if nothing changes
+    }
+    void updateTileMap(const float& dt){
+        this->mp->update();
+        this->mp->checkCollision(this->player, dt);
+    }
+    void updateEnemies(const float& dt){ // 123
+        while(enemies.size() < maxEnemies){
+            this->enemyPosition = Vector2f(rand() % window->getSize().x + 1.f, 0);
+            enemies.push_back(Enemy(enemyPosition, player));  // putting randon position
+        }
+
+        for(auto& enemy : enemies){
+            enemy.update(dt);
+        }
     }
     void updateInput(const float &dt){
-        // this->checkForQuit();
         if(Keyboard::isKeyPressed(Keyboard::Key(this->keyBinds.at("MOVE_LEFT")))){
-            this->player->move(dt, -10.f, 0.f);
-        }   
+            this->player->move(-1, 0);
+        }  
         if(Keyboard::isKeyPressed(Keyboard::Key(this->keyBinds.at("MOVE_RIGHT")))){
-            this->player->move(dt, 10.f, 0.f);
+            this->player->move(1, 0); 
         }   
-        if(Keyboard::isKeyPressed(Keyboard::Key(this->keyBinds.at("MOVE_UP")))){
-            this->player->move(dt, 0.f, -10.f);
+        if(Keyboard::isKeyPressed(Keyboard::Key(this->keyBinds.at("JUMP"))) && this->player->canJump()){
+            this->player->Jump(dt);
         }
-        if(Keyboard::isKeyPressed(Keyboard::Key(this->keyBinds.at("MOVE_DOWN")))){
-            this->player->move(dt, 0.f, 10.f);
+
+        // Mouse::getPosition(Vector2f(window->getSize()))
+        if(Mouse::isButtonPressed(Mouse::Left) && this->player->canAttack(*window, mainView)){
+            // this->player->Attack(dt, mousePosView, enemies);
+            for(int i=0;i < this->player->getbullets().size(); i++){
+                this->player->getbullets()[i].update(dt);
+
+                for(int j=0; j < this->enemies.size(); j++){
+                    if(this->player->getbullets()[i].getShape().getGlobalBounds().intersects(enemies[j].getGlobalBounds())){
+                        // this->player->getbullets().erase(this->player->getbullets().begin() + i, this->player->getbullets().begin() + i + 1);
+                        // this->enemies.erase(this->enemies.begin() + j);
+                    }
+                }
+            }
         }
+        
 
         if(Keyboard::isKeyPressed(Keyboard::Key(this->keyBinds.at("CLOSE")))){
             this->quit = true;
         } 
+
+        if(buttons["EXIT"]->isPressed()){
+            this->quit = true;
+        }
+    }
+    void updateButtons(const float& dt){
+        for(auto& button : buttons){
+            button.second->update(this->mousePosWindow);
+        }
     }
     void update(const float& dt){
         this->updateMousePosition(&this->mainView);
@@ -936,35 +1809,51 @@ class GameState : public State{  //====================================  GAMESTA
         this->updateView(dt);
         this->updateInput(dt);
         this->player->update(dt);
+        this->updateEnemies(dt);
+        this->updateButtons(dt);
+        this->updateTileMap(dt);
     }
     
     void draw(RenderTarget* target = NULL){
         if(!target)
             target = this->window;
 
+
+        // this->renderTexture.draw(background);
+
         this->renderTexture.clear();
 
         // target = &this->renderTexture;
 
+        renderTexture.setView(this->renderTexture.getDefaultView());   // i dunno whether to put or not because he putted in the if paused
+        renderTexture.draw(background);
+
         this->renderTexture.setView(this->mainView);
         // target->draw(background);
-        this->renderTexture.draw(background);
         this->mp->draw(this->renderTexture);
-
 
         // this->mp->draw(*target);
         this->player->draw(this->renderTexture);
+        for(auto& enemy : enemies){
+            renderTexture.draw(enemy.getShape());
+            enemy.draw(renderTexture);
+        }
 
-        // renderTexture.setView(this->renderTexture.getDefaultView());   // i dunno whether to put or not because he putted in the if paused
 
         // FINAL RENDER
         this->renderTexture.display();
         this->renderSprite.setTexture(this->renderTexture.getTexture());
         target->draw(this->renderSprite);
+        for(auto &button : buttons){
+            button.second->draw(*target);
+        }
+        target->draw(player->gethealthBar());
+        target->draw(player->getBarOutline());
+
     }
 };
 
-class MainMenuState : public State { //===============================  MAINMENUSTATE  ============================================================
+class MainMenuState : public State { //==============================  MAINMENUSTATE  ============================================================
     private:
     RectangleShape background;
     Texture bgTexture;
@@ -995,10 +1884,21 @@ class MainMenuState : public State { //===============================  MAINMENU
         }
     }
     void setButtons(){
-        this->buttons["GAME_STATE"] = new Button(100, 200, 150, 50, this->font, "NEW GAME", Color(200, 200, 200), Color(150, 150, 150), Color(0, 0, 255));
-        this->buttons["SETTINGS"] = new Button(100, 350, 150, 50, this->font, "SETTINGS", Color(200, 200, 200), Color(150, 150, 150), Color(0, 0, 255));
-        this->buttons["EDITOR_STATE"] = new Button(100, 500, 150, 50, this->font, "EDITOR", Color(200, 200, 200), Color(150, 150, 150), Color(0, 0, 255));
-        this->buttons["EXIT"] = new Button(100, 650, 150, 50, this->font, "EXIT", Color(200, 200, 200), Color(150, 150, 150), Color(0, 0, 255));
+      this->buttons["GAME_STATE"] = new Button(100.f, 200.f, 150.f, 50.f, this->font, "NEW GAME", 12, Color::Magenta, Color(0, 0, 0), Color::Magenta, Color(200, 200, 200), Color(150, 150, 150), Color(0, 0, 255));
+
+        this->buttons["SPACE_SHOOTER"] = new Button(100.f, 300.f, 150.f, 50.f, this->font, "SPACE SHOOTER", 12,
+                Color::Magenta, Color(0, 0, 0), Color::Magenta,
+                Color(200, 200, 200), Color(150, 150, 150), Color(0, 0, 255));
+                
+        this->buttons["EDITOR_STATE"] = new Button(100.f, 400.f, 150.f, 50.f, this->font, "EDITOR", 12,
+                Color::Magenta, Color(0, 0, 0), Color::Magenta,
+                Color(200, 200, 200), Color(150, 150, 150), Color(0, 0, 255));
+                
+        this->buttons["EXIT"] = new Button(100.f, 500.f, 150.f, 50.f, this->font, "EXIT", 12, 
+                Color::Magenta, Color(0, 0, 0), Color::Magenta, 
+                Color(200, 200, 200), Color(150, 150, 150), Color(0, 0, 255));
+
+
     }
     public:
     //constructor / destructor
@@ -1026,13 +1926,21 @@ class MainMenuState : public State { //===============================  MAINMENU
         }
 
         if(this->buttons["GAME_STATE"]->isPressed()){
-            music.stop();
+            // music.stop();
             this->states->push(new GameState(this->window, this->Keys, this->states));
+            // music.play();
         }
+
+        if (this->buttons["SPACE_SHOOTER"]->isPressed()){
+            Game2 game;
+            game.run();
+        }
+        
 
         if(this->buttons["EDITOR_STATE"]->isPressed()){
             music.stop();        
             this->states->push(new EditorState(this->window, this->Keys, this->states));
+            // music.play();
         }
 
         if(this->buttons["EXIT"]->isPressed()){
@@ -1054,7 +1962,7 @@ class MainMenuState : public State { //===============================  MAINMENU
         this->updateButtons(dt);
     }
 
-    void drawButtons(RenderTarget* target){
+    void drawButtons(RenderTarget& target){
         for(auto &button : buttons){
             button.second->draw(target);
         }
@@ -1064,7 +1972,7 @@ class MainMenuState : public State { //===============================  MAINMENU
             target = this->window;
 
         target->draw(this->background);
-        this->drawButtons(target);
+        this->drawButtons(*target);
 
         // REMOVE LATER !!!
         Text mouseText;
@@ -1104,7 +2012,8 @@ class Game{  // ===================================================  GAME  =====
         }
     }
     void setWindow(){
-        this->window = new RenderWindow(VideoMode(1366, 768), "Gear of War", Style::Default);
+        this->window = new RenderWindow(VideoMode(1366, 768), "Gears of War", Style::Default);
+        // this->window = new RenderWindow(VideoMode::getDesktopMode(), "Gears of War", Style::Default);
         this->window->setFramerateLimit(60);
         
         // this->gridSize;
@@ -1157,7 +2066,7 @@ class Game{  // ===================================================  GAME  =====
         this->dt = this->clock.restart().asSeconds();
     }
     void updateState(){
-        if(!this->states.empty()){
+        if(!this->states.empty() && this->window->hasFocus()){
             this->states.top()->update(this->dt);
             if(this->states.top()->getQuit()){
 
@@ -1191,6 +2100,7 @@ class Game{  // ===================================================  GAME  =====
 };
 
 int main(){  //===================================================  MAIN  ============================================================
+    srand(time(NULL));
     Game game;
     
     while (game.isWindowOpen())
