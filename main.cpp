@@ -1,5 +1,3 @@
-// line 1559 error of intersection of bullet and enemy
-// A* path finding algorithm will be applied on the enemy to find the player
 #include <SFML/Graphics.hpp>
 #include <SFML/Window.hpp>
 #include <SFML/System.hpp>
@@ -50,6 +48,26 @@ public:
     }
 };
 
+class Enemy2 {
+public:
+    Sprite shape;
+    int HP;
+    int HPMAX;
+
+    Enemy2(Texture* texture, Vector2u windowSize) {
+        this->HPMAX = rand() % 3 + 1;
+        this->HP = this->HPMAX;
+        this->shape.setTexture(*texture);
+
+        this->shape.setScale(0.2f, 0.2f);
+        this->shape.setPosition(windowSize.x - this->shape.getGlobalBounds().width, rand() % int(windowSize.y - this->shape.getGlobalBounds().height));
+    }
+
+    void update(float dt) {
+        this->shape.move(-7.f * dt, 0.f);
+    }
+};
+
 class Player2 {
 public:
     Sprite shape;
@@ -70,222 +88,223 @@ public:
         this->shape.setRotation(90);
         this->shape.setPosition(400, 300);
     }
-};
 
-class Enemy2 {
-public:
-    Sprite shape;
-    int HP;
-    int HPMAX;
+    void shoot(Texture* bulletTexture, float dt) {
+        bullets.push_back(Bullet2(bulletTexture, shape.getPosition().x, shape.getPosition().y));
+    }
 
-    Enemy2(Texture* texture, Vector2u windowSize) {
-        this->HPMAX = rand() % 3 + 1;
-        this->HP = this->HPMAX;
-        this->shape.setTexture(*texture);
+    void updateBullets(float dt, const Vector2u& windowSize, std::vector<Enemy2>& enemies, int& score) {
+        for (size_t i = 0; i < bullets.size(); i++) {
+            // Move
+            bullets[i].shape.move(10.f * dt, 0.f);
 
-        this->shape.setScale(0.2f, 0.2f);
-        this->shape.setPosition(windowSize.x - this->shape.getGlobalBounds().width, rand() % int(windowSize.y - this->shape.getGlobalBounds().height));
+            // Out of window bounds
+            if (bullets[i].shape.getPosition().x > windowSize.x) {
+                bullets.erase(bullets.begin() + i);
+                break;
+            }
+
+            // Collision
+            for (size_t k = 0; k < enemies.size(); k++) {
+                if (bullets[i].shape.getGlobalBounds().intersects(enemies[k].shape.getGlobalBounds())) {
+                    if (enemies[k].HP <= 1) {
+                        score += enemies[k].HPMAX;
+                        enemies.erase(enemies.begin() + k);
+                    } else {
+                        enemies[k].HP--;
+                    }
+                    bullets.erase(bullets.begin() + i);
+                    break;
+                }
+            }
+        }
     }
 };
 
 class Game2 {
 private:
     RenderWindow window;
-    Font font;
     Texture playerTex, enemyTex, bulletTex;
-    Text scoreT, end, hp1, ehp1;
-    Player2 player;
+    Font font;
+    Player2* player;
     std::vector<Enemy2> enemies;
+    Text scoreT, hpT, endT;
     int score;
-    float shootTimer, enemyTimer;
-    Clock clock;
-    float dt, dtMultiplier;
+    float shootTimer, enemyTimer, dtMultiplier;
 
     void initWindow() {
-        window.create(VideoMode(1366, 768), "Shooter 360!", Style::Default);
-        window.setFramerateLimit(60);
-    }
-
-    void initFonts() {
-        if (!font.loadFromFile("Textures\\Balleny.ttf"))
-            throw "Font could not open";
+        this->window.create(VideoMode(1366, 768), "Shooter 360!", Style::Default);
+        this->window.setFramerateLimit(60);
     }
 
     void initTextures() {
-        if (!playerTex.loadFromFile("Textures\\ship.png"))
-            throw "Player texture could not open";
-        if (!enemyTex.loadFromFile("Textures\\enemy.png"))
-            throw "Enemy texture could not open";
-        if (!bulletTex.loadFromFile("Textures\\missile.png"))
-            throw "Bullet texture could not open";
+        if (!this->font.loadFromFile("..\\Font and Texture\\Balleny.ttf"))
+            throw "Could not load font";
+
+        this->playerTex.loadFromFile("..\\Font and Texture\\ship.png");
+        this->enemyTex.loadFromFile("..\\Font and Texture\\enemy.png");
+        this->bulletTex.loadFromFile("..\\Font and Texture\\missile.png");
     }
 
-    void initTexts() {
-        scoreT.setFont(font);
-        scoreT.setCharacterSize(40);
-        scoreT.setFillColor(Color::White);
-        scoreT.setPosition(window.getSize().x - 110.f, 10.f);
-
-        end.setFont(font);
-        end.setCharacterSize(100);
-        end.setFillColor(Color::Red);
-        end.setPosition(window.getSize().x / 2 - 200, window.getSize().y / 2 - 100);
-        end.setString("GAME OVER!");
-
-        hp1.setFont(font);
-        hp1.setCharacterSize(20);
-        hp1.setFillColor(Color::White);
-
-        ehp1.setFont(font);
-        ehp1.setCharacterSize(20);
-        ehp1.setFillColor(Color::White);
+    void initPlayer() {
+        this->player = new Player2(&playerTex);
     }
 
-    void updatePlayer() {
-        if (Keyboard::isKeyPressed(Keyboard::W))
-            player.shape.move(0.f, -10.f * dt);
-        if (Keyboard::isKeyPressed(Keyboard::S))
-            player.shape.move(0.f, 10.f * dt);
-        if (Keyboard::isKeyPressed(Keyboard::D))
-            player.shape.move(10.f * dt, 0.f);
-        if (Keyboard::isKeyPressed(Keyboard::A))
-            player.shape.move(-10.f * dt, 0.f);
+    void initText() {
+        this->scoreT.setFont(font);
+        this->scoreT.setCharacterSize(40);
+        this->scoreT.setFillColor(Color::White);
+        this->scoreT.setPosition(window.getSize().x - 110.f, 10.f);
 
-        if (player.shape.getPosition().x <= player.shape.getGlobalBounds().width) // LEFT
-            player.shape.setPosition(player.shape.getGlobalBounds().width, player.shape.getPosition().y);
+        this->hpT.setFont(font);
+        this->hpT.setCharacterSize(20);
+        this->hpT.setFillColor(Color::White);
 
-        if (player.shape.getPosition().x >= window.getSize().x) // RIGHT
-            player.shape.setPosition(window.getSize().x, player.shape.getPosition().y);
-
-        if (player.shape.getPosition().y <= 0) // TOP
-            player.shape.setPosition(player.shape.getPosition().x, 0);
-
-        if (player.shape.getPosition().y >= window.getSize().y - player.shape.getGlobalBounds().height) // BOTTOM
-            player.shape.setPosition(player.shape.getPosition().x, window.getSize().y - player.shape.getGlobalBounds().height);
-
-        hp1.setPosition(player.shape.getPosition().x - hp1.getGlobalBounds().width, player.shape.getPosition().y);
-        hp1.setString(std::to_string(player.HP) + "/" + std::to_string(player.HPMAX));
-    }
-
-    void updateBullets() {
-        if (shootTimer < 7)
-            shootTimer += 1.f * dt;
-        else if (Mouse::isButtonPressed(Mouse::Left) && shootTimer >= 7) {
-            shootTimer = 0;
-            player.bullets.push_back(Bullet2(&bulletTex, player.shape.getPosition().x, player.shape.getPosition().y));
-        }
-        for (int i = 0; i < player.bullets.size(); i++) {
-            player.bullets[i].shape.move(10.f * dt, 0.f);
-
-            if (player.bullets[i].shape.getPosition().x > window.getSize().x)
-                player.bullets.erase(player.bullets.begin() + i);
-
-            for (int k = 0; k < enemies.size(); k++) {
-                if (player.bullets[i].shape.getGlobalBounds().intersects(enemies[k].shape.getGlobalBounds())) {
-                    if (enemies[k].HP <= 1) {
-                        score += enemies[k].HPMAX;
-                        enemies.erase(enemies.begin() + k);
-                    } else
-                        enemies[k].HP--;
-
-                    player.bullets.erase(player.bullets.begin() + i);
-                    break;
-                }
-            }
-        }
-    }
-
-    void updateEnemies() {
-        if (enemyTimer >= 20) {
-            enemyTimer = 0;
-            enemies.push_back(Enemy2(&enemyTex, window.getSize()));
-        } else {
-            enemyTimer += 1.f * dt;
-        }
-
-        for (int i = 0; i < enemies.size(); i++) {
-            enemies[i].shape.move(-7.f * dt, 0.f);
-
-            if (enemies[i].shape.getPosition().x <= 0) {
-                enemies.erase(enemies.begin() + i);
-                break;
-            }
-
-            if (enemies[i].shape.getGlobalBounds().intersects(player.shape.getGlobalBounds())) {
-                enemies.erase(enemies.begin() + i);
-                player.HP--;
-                break;
-            }
-        }
+        this->endT.setFont(font);
+        this->endT.setCharacterSize(100);
+        this->endT.setFillColor(Color::Red);
+        this->endT.setPosition(window.getSize().x / 2 - 200, window.getSize().y / 2 - 100);
+        this->endT.setString("GAME OVER!");
     }
 
 public:
-    Game2()
-        : window(VideoMode(1366, 768), "Shooter 360!", Style::Default), player(&playerTex), score(0), shootTimer(20), enemyTimer(20), dtMultiplier(62.5f) {
-        initWindow();
-        initFonts();
-        initTextures();
-        initTexts();
+    Game2() {
+        this->initWindow();
+        this->initTextures();
+        this->initPlayer();
+        this->initText();
+
+        this->score = 0;
+        this->shootTimer = 20.f;
+        this->enemyTimer = 20.f;
+        this->dtMultiplier = 62.5f;
+    }
+
+    ~Game2() {
+        delete this->player;
     }
 
     void run() {
-        while (window.isOpen()) {
-            Event event;
-            while (window.pollEvent(event)) {
-                if (event.type == Event::Closed)
-                    window.close();
-                if (event.type == Event::KeyPressed && event.key.code == Keyboard::Escape)
-                    window.close();
-            }
+        Clock clock;
+        float dt;
 
-            dt = clock.restart().asSeconds() * dtMultiplier;
-
-            if (player.HP > 0) {
-                updatePlayer();
-                updateBullets();
-                updateEnemies();
-            }
-
-            render();
+        while (this->window.isOpen()) {
+            dt = clock.restart().asSeconds() * this->dtMultiplier;
+            this->update(dt);
+            this->render();
         }
+    }
+
+    void update(float dt) {
+        Event event;
+        while (this->window.pollEvent(event)) {
+            if (event.type == Event::Closed)
+                this->window.close();
+
+            if (event.type == Event::KeyPressed && event.key.code == Keyboard::Escape)
+                this->window.close();
+        }
+
+        if (this->player->HP > 0) {
+            this->updateInput(dt);
+            this->player->updateBullets(dt, this->window.getSize(), this->enemies, this->score);
+            this->updateEnemies(dt);
+        }
+
+        this->updateText();
+    }
+
+    void updateInput(float dt) {
+        if (Keyboard::isKeyPressed(Keyboard::W))
+            this->player->shape.move(0.f, -10.f * dt);
+        if (Keyboard::isKeyPressed(Keyboard::S))
+            this->player->shape.move(0.f, 10.f * dt);
+        if (Keyboard::isKeyPressed(Keyboard::D))
+            this->player->shape.move(10.f * dt, 0.f);
+        if (Keyboard::isKeyPressed(Keyboard::A))
+            this->player->shape.move(-10.f * dt, 0.f);
+
+        // Collision with window
+        if (this->player->shape.getPosition().x <= this->player->shape.getGlobalBounds().width)
+            this->player->shape.setPosition(this->player->shape.getGlobalBounds().width, this->player->shape.getPosition().y);
+
+        if (this->player->shape.getPosition().x >= this->window.getSize().x)
+            this->player->shape.setPosition(this->window.getSize().x, this->player->shape.getPosition().y);
+
+        if (this->player->shape.getPosition().y <= 0)
+            this->player->shape.setPosition(this->player->shape.getPosition().x, 0);
+
+        if (this->player->shape.getPosition().y >= this->window.getSize().y - this->player->shape.getGlobalBounds().height)
+            this->player->shape.setPosition(this->player->shape.getPosition().x, this->window.getSize().y - this->player->shape.getGlobalBounds().height);
+
+        if (this->shootTimer < 7)
+            this->shootTimer += 1.f * dt;
+        else if (Mouse::isButtonPressed(Mouse::Left) && this->shootTimer >= 7) {
+            this->shootTimer = 0;
+            this->player->shoot(&this->bulletTex, dt);
+        }
+    }
+
+    void updateEnemies(float dt) {
+        if (this->enemyTimer >= 20) {
+            this->enemyTimer = 0;
+            this->enemies.push_back(Enemy2(&this->enemyTex, this->window.getSize()));
+        } else {
+            this->enemyTimer += 1.f * dt;
+        }
+
+        for (size_t i = 0; i < this->enemies.size(); i++) {
+            this->enemies[i].update(dt);
+
+            if (this->enemies[i].shape.getPosition().x <= 0) {
+                this->enemies.erase(this->enemies.begin() + i);
+                break;
+            }
+
+            if (this->enemies[i].shape.getGlobalBounds().intersects(this->player->shape.getGlobalBounds())) {
+                this->enemies.erase(this->enemies.begin() + i);
+                this->player->HP--;
+                break;
+            }
+        }
+    }
+
+    void updateText() {
+        this->hpT.setPosition(this->player->shape.getPosition().x - this->hpT.getGlobalBounds().width, this->player->shape.getPosition().y);
+        this->hpT.setString(std::to_string(this->player->HP) + "/" + std::to_string(this->player->HPMAX));
+        this->scoreT.setString("Score: " + std::to_string(this->score));
     }
 
     void render() {
-        window.clear();
+        this->window.clear();
 
-        // Debug prints
-        std::cout << "Rendering player at position: (" << player.shape.getPosition().x << ", " << player.shape.getPosition().y << ")" << std::endl;
-        std::cout << "Score: " << score << std::endl;
+        this->window.draw(this->player->shape);
 
-        window.draw(player.shape);
-
-        for (int i = 0; i < player.bullets.size(); i++) {
-            window.draw(player.bullets[i].shape);
+        for (auto& bullet : this->player->bullets) {
+            this->window.draw(bullet.shape);
         }
 
-        for (int i = 0; i < enemies.size(); i++) {
-            ehp1.setString(std::to_string(enemies[i].HP) + "/" + std::to_string(enemies[i].HPMAX));
-            ehp1.setPosition(enemies[i].shape.getPosition().x, enemies[i].shape.getPosition().y - ehp1.getGlobalBounds().height);
-            window.draw(ehp1);
-            window.draw(enemies[i].shape);
+        for (auto& enemy : this->enemies) {
+            Text ehp;
+            ehp.setFont(this->font);
+            ehp.setCharacterSize(20);
+            ehp.setFillColor(Color::White);
+            ehp.setString(std::to_string(enemy.HP) + "/" + std::to_string(enemy.HPMAX));
+            ehp.setPosition(enemy.shape.getPosition().x, enemy.shape.getPosition().y - ehp.getGlobalBounds().height);
+            this->window.draw(ehp);
+            this->window.draw(enemy.shape);
         }
 
-        window.draw(scoreT);
-        window.draw(hp1);
+        this->window.draw(this->scoreT);
+        this->window.draw(this->hpT);
 
-        if (player.HP <= 0) {
-            window.draw(end);
+        if (this->player->HP <= 0) {
+            this->window.draw(this->endT);
         }
 
-        window.display();
+        this->window.display();
     }
 };
-
-
-
-
-
-
 
 
 
@@ -831,6 +850,7 @@ class Player : public Entity{  //======================================  PLAYER 
     Clock shootCoolDown;
     Texture bulletTexture;
 
+
     // Health bar
     float TotalHealth;
     float health;
@@ -935,7 +955,7 @@ class Player : public Entity{  //======================================  PLAYER 
     vector<Bullet>& getbullets(){
         return bullets;
     }
-    
+    int score = 0;
     
     void updateHealthBar(){
         health -= 0.05;
@@ -1782,8 +1802,9 @@ class GameState : public State{  //==================================  GAMESTATE
 
                 for(int j=0; j < this->enemies.size(); j++){
                     if(this->player->getbullets()[i].getShape().getGlobalBounds().intersects(enemies[j].getGlobalBounds())){
-                        // this->player->getbullets().erase(this->player->getbullets().begin() + i, this->player->getbullets().begin() + i + 1);
-                        // this->enemies.erase(this->enemies.begin() + j);
+                        this->player->getbullets().erase(this->player->getbullets().begin() + i, this->player->getbullets().begin() + i + 1);
+                        this->enemies.erase(this->enemies.begin() + j);
+                        this->player->score++;
                     }
                 }
             }
@@ -1958,7 +1979,7 @@ class MainMenuState : public State { //==============================  MAINMENUS
     void update(const float& dt){
         this->updateMousePosition();
         // this->updateInput(dt);
-        this->checkForQuit();
+        // this->checkForQuit();
         this->updateButtons(dt);
     }
 
