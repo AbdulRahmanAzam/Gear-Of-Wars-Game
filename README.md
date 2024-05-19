@@ -5,11 +5,9 @@ Dive into the action-packed world of **Combat Crusade**, meticulously crafted us
 ## 🔍 Explore the Project Structure
 Curious about the inner workings? Check out the comprehensive game structure breakdown, including all class relationships and functionalities.
 
-[🌟 Click here to view the whimsical game structure!](<https://whimsical.com/game-V56zKMyMmGBNLpjK1YgH6D>)
+### [🌟 Click here to view the whimsical game structure!](<https://whimsical.com/game-V56zKMyMmGBNLpjK1YgH6D>)
 
-# OOP PROJECT FINAL REPORT
-### Instructor: Talha Shahid
-#### Section: BAI-2A
+### Instructor: Talha Shahid #### Section: BAI-2A
 ###### Prepared by:
 | **Name**         | **Roll No** |
 |:-----------------|:-----------:|
