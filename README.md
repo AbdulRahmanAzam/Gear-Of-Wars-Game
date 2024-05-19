@@ -7,18 +7,21 @@ Curious about the inner workings? Check out the comprehensive game structure bre
 
 ### [🌟 Click here to view the whimsical game structure!](<https://whimsical.com/game-V56zKMyMmGBNLpjK1YgH6D>)
 
-## 🎮 Watch the Gameplay
-
-[![Watch the video](https://img.youtube.com/vi/CK_sTpJ5aGg/0.jpg)](https://www.youtube.com/watch?v=CK_sTpJ5aGg)
+#### Dont Forget to view the Demo🔥 of the Game 👇
 
 ### Instructor: Talha Shahid
 #### Section: BAI-2A
-###### Prepared by:
+###### Prepared by: 
 | **Name**         | **Roll No** |
 |:-----------------|:-----------:|
 | **Raghib Rizwan**  | **23k-0012** |
 | **Abdul Rahman**   | **23k-0061** |
 | **Talha Rusman**   | **23k-0065** |
+
+## 🎮 Watch the Gameplay
+
+[![Watch the video](https://img.youtube.com/vi/CK_sTpJ5aGg/0.jpg)](https://www.youtube.com/watch?v=CK_sTpJ5aGg)
+
 
 ## 📺 Watch the Explanation
 
