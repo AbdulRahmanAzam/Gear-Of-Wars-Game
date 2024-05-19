@@ -7,6 +7,18 @@ Curious about the inner workings? Check out the comprehensive game structure bre
 
 ### [🌟 Click here to view the whimsical game structure!](<https://whimsical.com/game-V56zKMyMmGBNLpjK1YgH6D>)
 
+
+## 🎮 Watch the Gameplay
+Check out the gameplay demonstration on YouTube:
+
+[![Watch the video](https://img.youtube.com/vi/CK_sTpJ5aGg/0.jpg)](https://www.youtube.com/watch?v=CK_sTpJ5aGg)
+
+## 📺 Watch the Explanation
+Watch a gameplay Explanation on YouTube:
+
+[![Watch the video](https://img.youtube.com/vi/GEt0v21cbfI/0.jpg)](https://www.youtube.com/watch?v=GEt0v21cbfI)
+
+
 ### Instructor: Talha Shahid #### Section: BAI-2A
 ###### Prepared by:
 | **Name**         | **Roll No** |
@@ -14,15 +26,6 @@ Curious about the inner workings? Check out the comprehensive game structure bre
 | **Raghib Rizwan**  | **23k-0012** |
 | **Abdul Rahman**   | **23k-0061** |
 | **Talha Rusman**   | **23k-0065** |
-
-## Gear-Of-Wars-Game
-
-## Demo Video
-
-## Explanation Video
-[![Watch the video](https://img.youtube.com/vi/GEt0v21cbfI/0.jpg)](https://www.youtube.com/watch?v=GEt0v21cbfI)
-
-
 
 # Introduction
 This is a thrilling 2D action game that puts players in the mindset of
