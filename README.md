@@ -8,7 +8,7 @@
 | Name           | Roll No       |
 | -------------  | ------------- |
 | Raghib Rizwan  | 23k-0012      |
-| Abdul Rahman   | 23k-0064      |
+| Abdul Rahman   | 23k-0061      |
 | Talha Rusman   | 23k-0065      |
 
 #### Geat-Of-Wars-Game
