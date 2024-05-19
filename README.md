@@ -22,7 +22,10 @@ Curious about the inner workings? Check out the comprehensive game structure bre
 ## Demo Video
 
 ## Explanation Video
-[![Watch the video](https://img.youtube.com/vi/GEt0v21cbfI/0.jpg)](https://www.youtube.com/watch?v=GEt0v21cbfI)
+<!-- [![Watch the video](https://img.youtube.com/vi/GEt0v21cbfI/0.jpg)](https://www.youtube.com/watch?v=GEt0v21cbfI) -->
+<a href="https://youtu.be/GEt0v21cbfI?si=a1YukQT4ZhVCXDig" target="_blank">
+ <img src="http://img.youtube.com/vi/qwrpa14n4bs/maxresdefault.jpg" alt="Watch the video" width="900" height="500" border="10" />
+</a>
 
 
 # Introduction
