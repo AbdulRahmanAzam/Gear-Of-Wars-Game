@@ -1,3 +1,12 @@
+# 🚀 Welcome to My Militia Force Game!
+
+Dive into the action-packed world of **Combat Crusade**, meticulously crafted using C++ and the SFML library. This project showcases advanced Object-Oriented Programming (OOP) principles with a robust structure of inherited classes, functions, getters, and setters, bringing the classic gameplay to life with modern coding techniques.
+
+## 🔍 Explore the Project Structure
+Curious about the inner workings? Check out the comprehensive game structure breakdown, including all class relationships and functionalities.
+
+[🌟 Click here to view the whimsical game structure!](<https://whimsical.com/game-V56zKMyMmGBNLpjK1YgH6D>)
+
 # PROJECT FINAL REPORT
 ### OBJECT ORIENTED PROGRAMMING
 ### Instructor: Talha Shahid
@@ -12,6 +21,11 @@
 | **Talha Rusman**   | **23k-0065** |
 
 ## Gear-Of-Wars-Game
+
+## Demo Video
+
+## Explanation Video
+
 
 # Introduction
 This is a thrilling 2D action game that puts players in the mindset of
