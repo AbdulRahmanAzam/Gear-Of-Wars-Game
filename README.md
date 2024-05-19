@@ -11,7 +11,7 @@
 | Abdul Rahman   | 23k-0061      |
 | Talha Rusman   | 23k-0065      |
 
-#### Geat-Of-Wars-Game
+## Gear-Of-Wars-Game
 
 # Introduction
 This is a thrilling 2D action game that puts players in the mindset of
