@@ -7,9 +7,9 @@
 
 | Name           | Roll No       |
 | -------------  | ------------- |
-| Zunaira Amjad  | 23k-0013      |
-| Murtaza Jafri  | 23k-0076      |
-| Hamza Sheikh   | 23k-0060      |
+| Raghib Rizwan  | 23k-0012      |
+| Abdul Rahman   | 23k-0064      |
+| Talha Rusman   | 23k-0065      |
 
 #### Geat-Of-Wars-Game
 
