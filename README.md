@@ -30,13 +30,6 @@ Curious about the inner workings? Check out the comprehensive game structure bre
 
 
 # Introduction
-This is a thrilling 2D action game that puts players in the mindset of
-intense combat scenarios. This game is going to have different
-characters and even different weapons and whenever the game is
-leveling up the difficulty level is also increasing. There are
-different enemies which are spawned according to the difficulty.
-
-//Changed
 
 This is a thrilling 2D action game that puts players in the mindset of
 intense combat scenarios. This game is going to have different
@@ -47,14 +40,6 @@ inspite of this, there is another game namely space shooter which
 shows the interaction of fighting jet with it's ghost enemies.
 
 # Problem Statement
-Many action games lack depth and challenge, often relying on
-repetitive gameplay and predictable enemy behavior. It is very
-difficult to make different maps of the game. As each map is
-according to the difficulty level. This game asks a user to enter
-username and stores their high scores which is very difficult to
-make as it requires filing for this purpose.
-
-//Changed
 
 Many action games lack depth and challenge, often relying on
 repetitive gameplay and predictable enemy behavior. It is very
