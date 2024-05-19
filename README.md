@@ -1,6 +1,6 @@
 # PROJECT FINAL REPORT
 ### OBJECT ORIENTED PROGRAMMING
-#### Instructor: Talha Shahid
+### Instructor: Talha Shahid
 #### Section: BAI-2A
 
 ###### Prepared by:
