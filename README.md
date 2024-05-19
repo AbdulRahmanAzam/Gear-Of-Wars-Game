@@ -7,13 +7,10 @@ Curious about the inner workings? Check out the comprehensive game structure bre
 
 [🌟 Click here to view the whimsical game structure!](<https://whimsical.com/game-V56zKMyMmGBNLpjK1YgH6D>)
 
-# PROJECT FINAL REPORT
-### OBJECT ORIENTED PROGRAMMING
+# OOP PROJECT FINAL REPORT
 ### Instructor: Talha Shahid
 #### Section: BAI-2A
-
 ###### Prepared by:
-
 | **Name**         | **Roll No** |
 |:-----------------|:-----------:|
 | **Raghib Rizwan**  | **23k-0012** |
@@ -25,6 +22,7 @@ Curious about the inner workings? Check out the comprehensive game structure bre
 ## Demo Video
 
 ## Explanation Video
+[![Watch the video](https://img.youtube.com/vi/GEt0v21cbfI/0.jpg)](https://www.youtube.com/watch?v=GEt0v21cbfI)
 
 
 # Introduction
